@@ -155,7 +155,7 @@ is also extremely simple and very powerful: function composition, the use of the
 where functions are displayed as boxes with one or more inputs (the arguments) and one output (the returned value), 
 with the outputs of some boxes "feeding" as inputs other boxes, as in the following diagram:
 
-![Diagram1](C:\AVV\IntelliJ3\ZIO-Dialogue-3\Diagram1.png)
+![Diagram1](C:\AVV\IntelliJ3\ContribsGH\ZIO-Dialogue-3\Diagram1.png)
 
 The result of composing two (or more) functions is also a function, so it can be represented as a single box. 
 In the previous example, this is hinted at by displaying a new box that encloses those belonging to the functions f11, 
@@ -167,7 +167,7 @@ of representing a program at different levels of abstraction. This is exemplifie
 the functions displayed at the level of the previous diagram are represented at a higher level, in a more abstract 
 view, by replacing the composed functions by their composition: 
 
-![Diagram2](C:\AVV\IntelliJ3\ZIO-Dialogue-3\Diagram2.png)
+![Diagram2](C:\AVV\IntelliJ3\ContribsGH\ZIO-Dialogue-3\Diagram2.png)
 
 Equivalently, the functions composing a program at a certain level can be displayed in a more detailed view, at a 
 lower level of abstraction, by "decomposing" some functions into the functions that compose them.
