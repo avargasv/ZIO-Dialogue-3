@@ -25,8 +25,8 @@ object ConsoleDialogue extends ZIOAppDefault:
     case Ask(question: String, yesContinuation: Dialogue, noContinuation: Dialogue) =>
       for
         bool <- askBooleanQuestion(question)
-        _    <- if (bool) consoleDialogue(yesContinuation)
-        else consoleDialogue(noContinuation)
+        _    <- if bool then consoleDialogue(yesContinuation)
+                else consoleDialogue(noContinuation)
       yield ()
     case Stop(conclusion: String) =>
       Console.printLine(conclusion)
@@ -41,7 +41,7 @@ object ConsoleDialogue extends ZIOAppDefault:
     for
       input <- Console.readLine
       bool  <- ZIO.fromOption(makeBool(input)) orElse
-        (Console.printLine("Please type 'y' or 'n'") zipRight getBool())
+               (Console.printLine("Please type 'y' or 'n'") zipRight getBool())
     yield bool
 
   private def makeBool(s: String): Option[Boolean] =

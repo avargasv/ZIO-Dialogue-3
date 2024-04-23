@@ -1,4 +1,4 @@
-# Why on earth a ZIO IO monad for Scala?
+# Why on earth a ZIO IO monad for Scala 3?
 
 ## 1. Introduction.
 
@@ -49,18 +49,16 @@ by `Some`, for the rest).
 
 In programming not all functions are pure. Let's give some examples of impure functions in Scala:
 ```scala
-  val rnd = new scala.util.Random
-  
-  def addRandom(i:Int): Int = {
+  val rnd = scala.util.Random
+  def addRandom(i:Int): Int =
     val rndInt = rnd.nextInt
     i + rndInt
-  }
 
-  def getLine(): String = {
+  import scala.io.StdIn.readLine
+  def getLine(): String =
     println("Please type a line")
     val line = readLine()
     line
-  }
 ```
 In both examples, two successive calls to the defined functions with the same arguments will return different values,
 so both functions are impure. In the first example, the source of impurity is an external service (specifically a 
@@ -108,7 +106,7 @@ To illustrate evaluation by substitution, let's make the following definitions:
   val res = square(sum(5, square(3)))
 ```
 and apply the procedure just described to the evaluation of `res` (the == symbol can be read as "is equivalent 
-to what follows, by the substitution principle applied for the reason indicated"): 
+to what follows, by the substitution principle applied for the reason indicated within braces"): 
 ```
 square(sum(5, square(3))) 
 == { definition of square }
@@ -273,24 +271,25 @@ A few examples may help to clarify the concepts presented so far:
   val zio1 = ZIO.succeed("This is a string")
   val zio2 = zio1.map(_.toUpperCase)
   val exampleMap =
-    for {
+    for
       val1 <- zio1
       _ <- Console.printLine(s"zio1 succeeds with value '${val1}'")
       val2 <- zio2
       _ <- Console.printLine(s"zio2 succeeds with value '${val2}'")
-    } yield ()
+    yield ()
 
   // exampleEcho
+  val exampleEcho =
     Console.readLine("Echo ... please type something\n").
       flatMap(line => Console.printLine(line).
       map(_ =>"You typed '" + line + "'"))
 
-  // exampleEcho2
+  // exampleEcho 2
   val exampleEcho2 =
-    for {
-      line <- Console.readLine("Echo ... please type something\n")
+    for
+      line <- Console.readLine("Echo 2 ... please type something\n")
       _ <- Console.printLine(line)
-    } yield ("You typed '" + line + "'")
+    yield ("You typed '" + line + "'")
 ```
 The first ZIO example, `exampleMap`, shows how `map` can transform the result value of a functional effect.
 The success values of zio1 and zio2 are displayed using `Console`, an already mentioned service that provides 
@@ -316,24 +315,23 @@ This increases the intuitive appeal of `<-` and `yield`, that certainly `flatMap
 ZIO applications can be run as normal Scala apps by embedding them within an object extending `ZIOAppDefault` and 
 overriding the `run` function:
 ```scala
-import zio._
+import zio.*
 
-object ZIOExampleApp extends ZIOAppDefault {
+object ZIOExampleApp extends ZIOAppDefault:
 
   def fnReadLine(prompt: String) =
-    for {
+    for
       _ <- Console.printLine(prompt)
       line <- Console.readLine
-    } yield line
+    yield line
 
   val appReadLine =
-    for {
+    for
       line <- fnReadLine("Please type a line")
       _ <- Console.printLine(s"You typed: '${line}'")
-    } yield ()
-  
+    yield ()
+
   override def run = appReadLine
-}
 ```
 Here, the function `fnReadLine` receives a `String` and returns an IO with result type `String`. This IO is called 
 in `appReadLine` within a `for` comprehension, and its result is used in another line of the same comprehension.
@@ -349,7 +347,7 @@ one of the two effects fails, the entire composed effect fails.
 
 Here we have a couple of examples using the combinators just presented:
 ```scala
-import zio._
+import zio.*
 
 val helloWorld = ZIO.succeed(print("Hello ")).
                  zipRight(ZIO.attempt(print("World!")))
@@ -373,11 +371,11 @@ To further elaborate on the main ideas presented so far, we will apply them to t
 interactive dialogues, those that allow only responses of the "yes/no" type, which can be represented by the `Dialogue` 
 data type defined in the code that follows, which also presents an example instance of that type: 
 ```scala
-  sealed trait Dialogue
-  
-  case class Ask(question: String, yesContinuation: Dialogue, noContinuation: Dialogue) extends Dialogue
-
-  case class Stop(conclusion: String) extends Dialogue
+  enum Dialogue:
+    case Ask(question: String, yesContinuation: Dialogue, noContinuation: Dialogue)
+    case Stop(conclusion: String)
+    def greetFirst(name: String): Dialogue =
+      Ask(s"Welcome $name, are you ready to continue?", this, Stop(s"See you later $name."))
 
   val exampleDialogue =
     Ask("Do you know ZIO?",
@@ -395,17 +393,16 @@ Applying the for comprehension provided by ZIO for functional effects, the abstr
 almost literally translates into a recursive console implementation that simply pattern-matches over the two case 
 classes that extend the `Dialogue` trait:
 ```scala
-  def consoleDialogue(dialogue: Dialogue) = dialogue match {
+  def consoleDialogue(dialogue: Dialogue) = dialogue match
     case Ask(question: String, 
              yesContinuation: Dialogue, noContinuation: Dialogue) =>
-      for {
+      for
         bool <- askBooleanQuestion(question)
-        _    <- if (bool) consoleDialogue(yesContinuation)
+        _    <- if bool then consoleDialogue(yesContinuation)
                 else consoleDialogue(noContinuation)
-      } yield ()
+      yield ()
     case Stop(conclusion: String) =>
       Console.printLine(conclusion)
-  }
 ```
 Here, we assume the availability of `askBooleanQuestion`, a functional effect whose obvious role would be to ask by 
 console a yes/no response to a given question, returning a `Boolean` representation of the response (retrying if the 
@@ -419,25 +416,25 @@ a `Boolean`.
 If we assume this time the availability of a function `getBool` that implements the cycle to ask for a "y"/"n" 
 response, `askBooleanQuestion` can be implemented as:
 ```scala
-  def askBooleanQuestion(question: String) = for {
-    _    <- Console.printLine(question)
-    bool <- getBool
-  } yield bool
+  def askBooleanQuestion(question: String) = 
+    for
+      _    <- Console.printLine(question)
+      bool <- getBool
+    yield bool
 ```
 Finally, `getBool` can be implemented as:
 ```scala
   def getBool(): IO[IOException, Boolean] =
-    for {
+    for
       input <- Console.readLine
       bool  <- ZIO.fromOption(makeBool(input)) orElse
                (Console.printLine("Please type 'y' or 'n'") zipRight getBool)
-    } yield bool
+    yield bool
 
-  def makeBool(s: String): Option[Boolean] = {
-    if (s == "y") Some(true)
-    else if (s == "n") Some(false)
+  def makeBool(s: String): Option[Boolean] =
+    if s == "y" then Some(true)
+    else if s == "n" then Some(false)
     else None
-  }
 ```
 `makeBool` is a pure function that converts a console `String` answer to an `Option[Boolean]`. It returns 
 `Option[Boolean]` instead of `Boolean` to consider the possibility of an incorrect console answer (which is 
@@ -489,25 +486,25 @@ of our abstract definition of dialogues works. And, yes, that is the best way.
 
 In fact, it is quite simple, and completely general (that is, without any consideration regarding specific aspects 
 of a given implementation), to define a function on a dialogue that, given a name, returns a "greeting dialogue" 
-version of it. The best place for that function should be, naturally, the trait defining the dialogues themselves:
+version of it. The best place for that function should be, naturally, the enum defining the dialogues themselves:
 ```scala
-  sealed trait Dialogue {
+  enum Dialogue:
+    // ...
     def greetFirst(name: String): Dialogue =
       Ask(s"Welcome $name, are you ready to continue?", this, Stop(s"See you later ${name}."))
-  }
 ```
 Now we have a function that actually defines a new kind of dialogues at an abstract level. The interpreter necessary 
 to implement these new dialogues is trivial, because it can make good use of the previous one:
 ```scala
   def greetFirstConsoleDialogue(dialogue: Dialogue): IO[Exception, Unit] =
-    for {
+    for
       name <- Console.readLine("What is your name?\n")
       _    <- consoleDialogue(dialogue.greetFirst(name))
-    } yield ()
+    yield ()
 ```
 These definitions clearly show that the change we made to the `Dialogue` definition, preserves a neat distinction 
 between the abstract definition of the dialogues and their implementation, which allows us to work independently 
-(and as a consequence more easily) at the "model" and the "view" levels of our program. 
+(and as a consequence more easily) at the "model" and the "view" levels of our program.
 
 >The model-view separation can be seen as a "first-level" application of the 
 [separation of concerns](https://en.wikipedia.org/wiki/Separation_of_concerns) 
@@ -625,14 +622,15 @@ no matter what language you use to actually program in (Erik Meijer)".
 To learn more about ZIO, you can find many useful guides and good reference material on the
 [official site](https://zio.dev/reources).
 
-Another site with interesting material is that of [Scalac](https://scalac.io/resources/), where you can find, among 
-others, ZIO console apps larger than ours, which you can face more motivated and prepared after reading this 
-introduction.
+Another site with interesting material is that of [Scalac](https://scalac.io/resources/), where you can find, among  others, ZIO 
+console apps larger than ours, which you can face more motivated and prepared after reading this introduction.
 
-The "bible" about ZIO is [Zionomicon](https://www.zionomicon.com/), whose main author is John A. De Goes, the creator 
-of ZIO. In the first chapter there is a history of ZIO that mentions its birth as an IO Monad for Scala with strong 
-emphasis, from the very beginning, on asynchronous and concurrent programming.
+The ultimate guide to ZIO is [Zionomicon](https://www.zionomicon.com/), co-written by John A. De Goes, the author of ZIO. In the first
+chapter there is a history of ZIO that mentions its birth as an IO Monad for Scala with strong emphasis, from 
+the very beginning, on asynchronous and concurrent programming.
 
-The Scala code of this article, written using Scala 2.13, can be found [here](https://github.com/avargasv/ZIO-Dialogue.git).
+The Scala code of this article, written using Scala 3, can be found 
+[here](https://github.com/avargasv/ZIO-Dialogue-3.git).
 
-A Scala 3 version is available [here](https://github.com/avargasv/ZIO-Dialogue-3.git).
+A Scala 2 version is available 
+[here](https://github.com/avargasv/ZIO-Dialogue.git).
